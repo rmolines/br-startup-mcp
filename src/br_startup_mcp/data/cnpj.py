@@ -188,6 +188,13 @@ INSERT OR REPLACE INTO founders
 VALUES (?, ?, ?, ?, ?, ?, ?)
 """
 
+_STARTUP_COLS = [
+    "cnpj", "razao_social", "nome_fantasia", "situacao_cadastral",
+    "data_abertura", "capital_social_brl", "cnae_principal",
+    "cnaes_secundarios", "natureza_juridica", "porte",
+    "endereco_logradouro", "cidade", "estado", "cep", "updated_at",
+]
+
 
 def load_startup_to_duckdb(
     startup: Startup, founders: list[Founder], db_path: str
@@ -251,13 +258,7 @@ def get_startup_by_cnpj(cnpj: str, db_path: str) -> Optional[Startup]:
         row = con.execute("SELECT * FROM startups WHERE cnpj = ?", [clean]).fetchone()
         con.close()
         if row:
-            cols = [
-                "cnpj", "razao_social", "nome_fantasia", "situacao_cadastral",
-                "data_abertura", "capital_social_brl", "cnae_principal",
-                "cnaes_secundarios", "natureza_juridica", "porte",
-                "endereco_logradouro", "cidade", "estado", "cep", "updated_at",
-            ]
-            d = dict(zip(cols, row))
+            d = dict(zip(_STARTUP_COLS, row))
             d["cnaes_secundarios"] = json.loads(d["cnaes_secundarios"] or "[]")
             return Startup(**d)
     except Exception:
@@ -314,15 +315,9 @@ def query_startups(
         sql += f" LIMIT {int(limit)}"
 
         rows = con.execute(sql, params).fetchall()
-        cols = [
-            "cnpj", "razao_social", "nome_fantasia", "situacao_cadastral",
-            "data_abertura", "capital_social_brl", "cnae_principal",
-            "cnaes_secundarios", "natureza_juridica", "porte",
-            "endereco_logradouro", "cidade", "estado", "cep", "updated_at",
-        ]
         result = []
         for row in rows:
-            d = dict(zip(cols, row))
+            d = dict(zip(_STARTUP_COLS, row))
             d["cnaes_secundarios"] = json.loads(d["cnaes_secundarios"] or "[]")
             result.append(Startup(**d))
         return result
