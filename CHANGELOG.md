@@ -1,5 +1,11 @@
 # Changelog
 
+## fontes-early-stage-bulk — PR #6 — 2026-03-19
+**Type:** feat
+**Node:** fontes-early-stage-bulk
+**Commit:** `be19479`
+**Decisions:** YC API is fully public (no auth) but `country=Brazil` filter is broken — must scrape all 232 pages and filter by `locations` field (49 BR companies confirmed); ABStartups returned HTTP 503 (site down) with no public API regardless; CVM crowdfunding data tracks platforms (73 active), not individual startup raises under RCVM 88; ACE domain acestartups.com.br was hijacked — correct domain is aceventures.com.br; InovAtiva domain is inovativa.online not inovativa.org.br; total reachable early-stage BR universe: 5,000–8,000 unique startups; see LEARNINGS.md#fontes-early-stage-bulk
+
 ## pipeline-crunchbase — PR #5 — 2026-03-19
 **Type:** feat
 **Node:** pipeline-crunchbase
