@@ -162,7 +162,16 @@ CREATE TABLE IF NOT EXISTS startups (
     cidade VARCHAR,
     estado VARCHAR,
     cep VARCHAR,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    crunchbase_uuid VARCHAR,
+    crunchbase_slug VARCHAR,
+    categorias VARCHAR,
+    descricao VARCHAR,
+    website VARCHAR,
+    total_funding_usd DOUBLE,
+    last_funding_type VARCHAR,
+    last_funding_date DATE,
+    employee_count VARCHAR
 )
 """
 
@@ -180,7 +189,7 @@ CREATE TABLE IF NOT EXISTS founders (
 
 _UPSERT_STARTUP = """
 INSERT OR REPLACE INTO startups
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 _UPSERT_FOUNDER = """
@@ -193,6 +202,9 @@ _STARTUP_COLS = [
     "data_abertura", "capital_social_brl", "cnae_principal",
     "cnaes_secundarios", "natureza_juridica", "porte",
     "endereco_logradouro", "cidade", "estado", "cep", "updated_at",
+    "crunchbase_uuid", "crunchbase_slug", "categorias", "descricao",
+    "website", "total_funding_usd", "last_funding_type", "last_funding_date",
+    "employee_count",
 ]
 
 
@@ -222,6 +234,15 @@ def load_startup_to_duckdb(
             startup.estado,
             startup.cep,
             startup.updated_at,
+            startup.crunchbase_uuid,
+            startup.crunchbase_slug,
+            json.dumps(startup.categorias),
+            startup.descricao,
+            startup.website,
+            startup.total_funding_usd,
+            startup.last_funding_type,
+            startup.last_funding_date,
+            startup.employee_count,
         ],
     )
 
@@ -260,6 +281,7 @@ def get_startup_by_cnpj(cnpj: str, db_path: str) -> Optional[Startup]:
         if row:
             d = dict(zip(_STARTUP_COLS, row))
             d["cnaes_secundarios"] = json.loads(d["cnaes_secundarios"] or "[]")
+            d["categorias"] = json.loads(d.get("categorias") or "[]")
             return Startup(**d)
     except Exception:
         pass  # table doesn't exist yet — fetch from API
@@ -319,6 +341,7 @@ def query_startups(
         for row in rows:
             d = dict(zip(_STARTUP_COLS, row))
             d["cnaes_secundarios"] = json.loads(d["cnaes_secundarios"] or "[]")
+            d["categorias"] = json.loads(d.get("categorias") or "[]")
             result.append(Startup(**d))
         return result
     except Exception:
