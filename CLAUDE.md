@@ -24,3 +24,9 @@ See `references/context-protocol.md` in the fractal plugin for the full navigati
 **BrasilAPI cnae_fiscal é int:** O campo `cnae_fiscal` é retornado como inteiro, não string. Zero-paddar com `f"{int(cnae):07d}"` para 7 dígitos. Idem para `cnaes_secundarios[i]["codigo"]`.
 
 **search_startups retorna vazio sem seed:** `search_startups` consulta apenas cache DuckDB local — retorna vazio até que CNPJs sejam populados via `get_startup_by_cnpj`. Não há busca em batch pela Receita sem BigQuery/bulk.
+
+**Crunchbase campos monetários e datas são dicts, não primitivos:** A API retorna `{"value": 5000000, "currency": "USD", "value_usd": 5000000}` para valores e `{"value": "2023-01-15", "precision": "day"}` para datas — não floats/strings. Usar sempre `_parse_usd()` e `_parse_date()` de `data/crunchbase.py` ao normalizar.
+
+**DuckDB rejeita arquivo de 0 bytes:** `NamedTemporaryFile` cria arquivo vazio — `duckdb.connect()` nele lança `IOException: not a valid DuckDB database file`. Em testes, criar path sem criar o arquivo: `os.path.join(tempfile.mkdtemp(), "test.duckdb")`.
+
+**Crunchbase _check_api_key() lê env em runtime:** A constante de módulo não é suficiente — testes que alteram `os.environ` após import não afetam a key se ela foi lida no import. A função `_check_api_key()` re-lê a cada chamada, permitindo testes com `os.environ.pop()`.

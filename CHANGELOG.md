@@ -1,5 +1,11 @@
 # Changelog
 
+## pipeline-crunchbase — PR #5 — 2026-03-19
+**Type:** feat
+**Node:** pipeline-crunchbase
+**Commit:** `c1b42fb`
+**Decisions:** Crunchbase Basic free tier only; retry+backoff on 429; manual CNPJ↔UUID matching via enrich tool; investors stored as JSON string in DuckDB; _check_api_key() reads env at runtime for test compatibility; see HANDOVER.md#pipeline-crunchbase
+
 ## pipeline-cnpj-receita — PR #4 — 2026-03-19
 **Type:** feat
 **Node:** pipeline-cnpj-receita

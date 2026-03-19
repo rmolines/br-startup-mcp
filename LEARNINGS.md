@@ -1,5 +1,16 @@
 # Learnings
 
+## pipeline-crunchbase — 2026-03-19
+
+**Crunchbase retorna campos monetários e de data como dicts, não tipos primitivos**
+A API Crunchbase Basic retorna valores monetários como `{"value": 5000000, "currency": "USD", "value_usd": 5000000}` e datas como `{"value": "2023-01-15", "precision": "day"}`. Não são floats/strings diretos. Sempre usar helpers `_parse_usd()` e `_parse_date()` de `data/crunchbase.py` ao normalizar respostas Crunchbase.
+
+**DuckDB rejeita arquivo de 0 bytes como "not a valid DuckDB database file"**
+Criar um arquivo temporário vazio com `NamedTemporaryFile` e depois passar o path para `duckdb.connect()` causa `IOException: not a valid DuckDB database file`. Em testes: usar `tempfile.mkdtemp()` e construir o path sem criar o arquivo (`os.path.join(tmpdir, "test.duckdb")`). DuckDB cria o arquivo se não existir.
+
+**`_check_api_key()` deve ler env em runtime, não em import time**
+Se a API key for definida como constante no módulo (`API_KEY = os.environ.get("...")`) durante o import, testes que alteram `os.environ` após o import não afetam o valor. Usar uma função `_check_api_key()` que lê `os.environ` a cada chamada garante que testes possam controlar o comportamento via `os.environ.pop()`/`os.environ["KEY"] = "..."`.
+
 ## pipeline-gov-aberto — 2026-03-19
 
 **CVM dados abertos não tem dataset específico de CVM 88 / equity crowdfunding**

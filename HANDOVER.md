@@ -1,5 +1,39 @@
 # Handover
 
+## pipeline-crunchbase — 2026-03-19
+
+**What was done:** O MCP server agora integra a API Crunchbase Basic (free tier) para dados de rodadas de investimento, valuations e investidores de startups brasileiras. Dois novos tools MCP expostos: `list_recent_rounds` (rodadas recentes via Crunchbase) e `get_investor_portfolio` (portfólio de um fundo pelo nome no cache). Tool `enrich_startup_with_crunchbase` associa dados Crunchbase a uma Startup existente pelo slug. `get_startup_by_cnpj` enriquecido com parâmetro `include_rounds`. Toda a integração degrada graciosamente quando `CRUNCHBASE_API_KEY` não está configurada — retorna JSON com mensagem clara, sem lançar exceção.
+
+**Key decisions:**
+- Crunchbase Basic free tier: endpoints `/v4/searches/organizations`, `/v4/searches/funding_rounds`, `/v4/entities/organizations/{permalink}` com auth via `?user_key=`. Sem endpoints pagos.
+- Retry + backoff: 429 → sleep 60s, outros erros HTTP → backoff exponencial (1s, 2s, 4s), max 3 retries.
+- `list_recent_rounds` usa `fetch_funding_rounds()` (não `fetch_organizations_brazil()`) — rodadas globais, não apenas brasileiras. Filtro por Brasil seria via `funded_organization_location` mas não implementado (aceitável para free tier).
+- Matching CNPJ↔Crunchbase UUID é manual via `enrich_startup_with_crunchbase(cnpj, crunchbase_slug)` — sem matching automático (out of scope).
+- `investors` no modelo `Round` armazenado como JSON string no DuckDB (coluna VARCHAR) para compatibilidade com schema simples.
+- Módulo `_check_api_key()` lê env var em runtime (não em import time) para suporte a testes que mudam `os.environ`.
+
+**Pitfalls discovered:**
+- Crunchbase retorna campos monetários como dicts `{"value": 5000000, "currency": "USD", "value_usd": 5000000}` — não floats diretos. Usar `_parse_usd()` que extrai `value_usd` ou `value`.
+- Crunchbase datas retornam como dicts `{"value": "2023-01-15", "precision": "day"}` — usar `_parse_date()` que extrai `value`.
+- `fetch_organizations_brazil()` não é chamada por nenhum tool (tools de rounds usam `fetch_funding_rounds()`). Está disponível para uso futuro.
+- DuckDB `NamedTemporaryFile` cria arquivo vazio — DuckDB rejeita arquivo pré-existente com 0 bytes como "not a valid DuckDB database file". Em testes, criar path em `tempfile.mkdtemp()` sem criar o arquivo antes.
+
+**Next steps:**
+- Quando `CRUNCHBASE_API_KEY` for obtida, testar `list_recent_rounds` com dados reais e verificar normalização dos campos
+- Popular cache de rounds para investors brasileiros relevantes (Kaszek, Monashees, Softbank, Canary)
+- Considerar adicionar filtro de país em `list_recent_rounds` via `funded_organization_location`
+- Cache TTL para rounds (dados mudam frequentemente)
+
+**Key files changed:**
+- `src/br_startup_mcp/data/crunchbase.py` — Crunchbase API client + normalize + DuckDB cache (novo)
+- `src/br_startup_mcp/models/entities.py` — Round, Investor models + Startup enrichment fields
+- `src/br_startup_mcp/data/cnpj.py` — startups table extended with Crunchbase columns
+- `src/br_startup_mcp/tools/crunchbase.py` — list_recent_rounds, get_investor_portfolio (novo)
+- `src/br_startup_mcp/tools/startup.py` — enrich_startup_with_crunchbase, include_rounds param
+- `src/br_startup_mcp/server.py` — 3 novos tools registrados (total: 7)
+
+---
+
 ## pipeline-gov-aberto — 2026-03-19
 
 **What was done:** Pipeline de ingestão de dados governamentais funcionando end-to-end. O agente agora consegue buscar dados reais da CVM e do BNDES, normalizar para modelos Pydantic, cachear em DuckDB local, e servir via MCP server com stdio transport. Dois tools MCP expostos: `get_cvm_crowdfunding_offers` e `get_bndes_financing`.
