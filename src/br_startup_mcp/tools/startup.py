@@ -105,7 +105,11 @@ def enrich_startup_with_crunchbase(cnpj: str, crunchbase_slug: str) -> str:
 
     # Fetch Crunchbase org data
     try:
-        from br_startup_mcp.data.crunchbase import fetch_organization_by_permalink, _parse_date as _cb_parse_date
+        from br_startup_mcp.data.crunchbase import (
+            fetch_organization_by_permalink,
+            _parse_date as _cb_parse_date,
+            _parse_usd as _cb_parse_usd,
+        )
         props = fetch_organization_by_permalink(crunchbase_slug)
     except Exception as e:
         return json.dumps({"error": f"Erro ao buscar Crunchbase: {e}"}, ensure_ascii=False)
@@ -116,37 +120,18 @@ def enrich_startup_with_crunchbase(cnpj: str, crunchbase_slug: str) -> str:
             ensure_ascii=False,
         )
 
-    # Extract enrichment fields from Crunchbase response
+    # Extract enrichment fields — reuse helpers from data/crunchbase.py
     crunchbase_uuid = props.get("uuid") or props.get("identifier", {}).get("uuid")
     website = props.get("website_url") or (props.get("website") or {}).get("value")
     descricao = props.get("short_description")
-    total_funding_usd = props.get("total_funding_usd")
-    if isinstance(total_funding_usd, dict):
-        total_funding_usd = total_funding_usd.get("value")
-    try:
-        total_funding_usd = float(total_funding_usd) if total_funding_usd is not None else None
-    except (ValueError, TypeError):
-        total_funding_usd = None
-
+    total_funding_usd = _cb_parse_usd(props.get("total_funding_usd"))
     last_funding_type = props.get("last_funding_type")
     if isinstance(last_funding_type, dict):
         last_funding_type = last_funding_type.get("value")
-
-    last_funding_at = props.get("last_funding_at")
-    if isinstance(last_funding_at, dict):
-        last_funding_at = last_funding_at.get("value")
-    last_funding_date = None
-    if last_funding_at:
-        try:
-            from datetime import datetime
-            last_funding_date = datetime.strptime(str(last_funding_at).strip()[:10], "%Y-%m-%d").date()
-        except (ValueError, TypeError):
-            last_funding_date = None
-
+    last_funding_date = _cb_parse_date(props.get("last_funding_at"))
     employee_count = props.get("num_employees_enum")
     if isinstance(employee_count, dict):
         employee_count = employee_count.get("value")
-
     categories_raw = props.get("categories") or []
     categorias = []
     for cat in categories_raw:
@@ -154,7 +139,7 @@ def enrich_startup_with_crunchbase(cnpj: str, crunchbase_slug: str) -> str:
             v = cat.get("value") or cat.get("name")
             if v:
                 categorias.append(v)
-        elif isinstance(cat, str):
+        elif isinstance(cat, str) and cat:
             categorias.append(cat)
 
     # Update startup object
