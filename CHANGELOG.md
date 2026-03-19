@@ -1,5 +1,11 @@
 # Changelog
 
+## pipeline-cnpj-receita — PR #4 — 2026-03-19
+**Type:** feat
+**Node:** pipeline-cnpj-receita
+**Commit:** `ea3f86a`
+**Decisions:** BrasilAPI chosen as Receita Federal proxy (free, no auth); cache-first strategy in get_startup_by_cnpj; search_startups is cache-only; participacao_pct always None (not provided by BrasilAPI); _STARTUP_COLS extracted to module constant
+
 ## pipeline-gov-aberto — PR #3 — 2026-03-19
 **Type:** feat
 **Node:** pipeline-gov-aberto

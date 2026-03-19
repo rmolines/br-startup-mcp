@@ -26,3 +26,33 @@
 - `src/br_startup_mcp/data/bndes.py` — BNDES client
 - `src/br_startup_mcp/server.py` — MCP server
 - `src/br_startup_mcp/tools/regulatory.py` — tool implementations
+
+---
+
+## pipeline-cnpj-receita — PR #4 — 2026-03-19
+
+**What was done:**
+Implementado o pipeline CNPJ da Receita Federal como fonte âncora do MCP. O MCP server agora consegue buscar dados cadastrais e societários de qualquer empresa brasileira via CNPJ, usando BrasilAPI como proxy gratuito e sem auth da Receita Federal. Modelos Pydantic `Startup` e `Founder` implementados conforme `architecture.md`, com cache DuckDB.
+
+**Key decisions:**
+- BrasilAPI escolhida como estratégia de acesso (proxy da Receita Federal, gratuito, sem auth)
+- Cache-first: get_startup_by_cnpj tenta DuckDB primeiro, só chama BrasilAPI em cache miss
+- `participacao_pct` sempre None — BrasilAPI não retorna percentual de participação societária
+- `search_startups` é cache-only (sem busca em batch pela Receita) — popular via calls a get_startup_by_cnpj
+- `_STARTUP_COLS` extraído como constante de módulo para evitar duplicação
+
+**Pitfalls discovered:**
+- BrasilAPI retorna `cnae_fiscal` como int (ex: `6201500`), não string. Zero-pad para 7 dígitos com `f"{int(cnae):07d}"`.
+- `cnaes_secundarios` na BrasilAPI é lista de dicts `{"codigo": int, "descricao": str}` — extrair só `codigo`.
+- DuckDB `read_only=True` lança exceção se o arquivo não existe ainda (mesmo comportamento de bndes/cvm) — tratar com try/except.
+
+**Next steps:**
+- Próximo nó: integração Crunchbase (enriquecimento de Startup com rodadas, categorias, website)
+- Considerar popular cache de `search_startups` com batch de CNPJs de interesse (ex: lista de startups por CNAE)
+- Cache TTL para revalidação de dados da Receita (dados mudam com pouca frequência)
+
+**Key files changed:**
+- `src/br_startup_mcp/data/cnpj.py` — BrasilAPI client + DuckDB cache
+- `src/br_startup_mcp/models/entities.py` — Startup, Founder models
+- `src/br_startup_mcp/tools/startup.py` — MCP tools
+- `src/br_startup_mcp/server.py` — tool registration

@@ -13,3 +13,17 @@ No SDK MCP Python, `@server.list_tools()` registra um handler — `server.list_t
 
 **stdout vs stderr no MCP server**
 O MCP protocol usa stdio — `sys.stdout` é o canal de comunicação jsonrpc. Qualquer print em stdout corrompe o protocolo. Todo logging deve ir para `sys.stderr`.
+
+## pipeline-cnpj-receita — 2026-03-19
+
+**BrasilAPI retorna cnae_fiscal como int, não string**
+O campo `cnae_fiscal` da BrasilAPI é um inteiro (ex: `6201500`), não uma string. Para criar um identificador padronizado de 7 dígitos (ex: `"0620150"`), usar `f"{int(cnae):07d}"`. Idem para `cnaes_secundarios[i]["codigo"]`.
+
+**cnaes_secundarios na BrasilAPI é lista de dicts, não lista de strings**
+Cada item de `cnaes_secundarios` é um dict com campos `codigo` (int) e `descricao` (str). Para normalizar para `list[str]`, extrair apenas `item["codigo"]` e zero-paddar.
+
+**BrasilAPI não retorna percentual de participação societária**
+O endpoint `/api/cnpj/v1/{cnpj}` retorna o quadro societário (campo `qsa`) sem percentual de participação. O campo `participacao_pct` do modelo `Founder` ficará sempre `None` até que outra fonte forneça este dado.
+
+**search_startups retorna vazio sem seed explícito de CNPJs**
+`query_startups` consulta apenas o cache DuckDB local. Para que `search_startups` retorne resultados, é necessário popular o cache chamando `get_startup_by_cnpj` com CNPJs específicos antes. Não há mecanismo de busca em batch pela Receita Federal sem BigQuery ou download bulk.
