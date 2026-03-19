@@ -73,6 +73,11 @@ _GET_STARTUP_SCHEMA = {
             "description": "Incluir quadro societário (default: true)",
             "default": True,
         },
+        "include_rounds": {
+            "type": "boolean",
+            "description": "Incluir rodadas de investimento Crunchbase (default: false). Requer CRUNCHBASE_API_KEY.",
+            "default": False,
+        },
     },
     "required": ["cnpj"],
 }
@@ -105,6 +110,57 @@ _SEARCH_STARTUPS_SCHEMA = {
     "required": [],
 }
 
+_LIST_RECENT_ROUNDS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "category": {
+            "type": "string",
+            "description": "Filtrar por categoria Crunchbase (opcional, ex: 'Fintech', 'SaaS')",
+        },
+        "funding_stage": {
+            "type": "string",
+            "description": "Filtrar por estágio de funding (opcional, ex: 'seed', 'series_a', 'series_b')",
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Máximo de resultados (default 20)",
+            "default": 20,
+        },
+    },
+    "required": [],
+}
+
+_GET_INVESTOR_PORTFOLIO_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "investor_name": {
+            "type": "string",
+            "description": "Nome do investidor ou fundo (ex: 'Kaszek', 'Monashees', 'Softbank')",
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Máximo de resultados (default 20)",
+            "default": 20,
+        },
+    },
+    "required": ["investor_name"],
+}
+
+_ENRICH_STARTUP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "cnpj": {
+            "type": "string",
+            "description": "CNPJ da empresa (com ou sem formatação)",
+        },
+        "crunchbase_slug": {
+            "type": "string",
+            "description": "Slug/permalink da organização no Crunchbase (ex: 'nubank', 'stone-pagamentos')",
+        },
+    },
+    "required": ["cnpj", "crunchbase_slug"],
+}
+
 
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
@@ -134,7 +190,8 @@ async def list_tools() -> list[types.Tool]:
             description=(
                 "Busca dados cadastrais e quadro societário de uma startup pelo CNPJ "
                 "via Receita Federal (BrasilAPI). Retorna razão social, CNAE, cidade, "
-                "estado, capital social, situação cadastral e sócios."
+                "estado, capital social, situação cadastral e sócios. "
+                "Suporta include_rounds=true para incluir rodadas Crunchbase (requer CRUNCHBASE_API_KEY)."
             ),
             inputSchema=_GET_STARTUP_SCHEMA,
         ),
@@ -145,6 +202,34 @@ async def list_tools() -> list[types.Tool]:
                 "Requer que CNPJs tenham sido previamente consultados via get_startup_by_cnpj."
             ),
             inputSchema=_SEARCH_STARTUPS_SCHEMA,
+        ),
+        types.Tool(
+            name="list_recent_rounds",
+            description=(
+                "Busca rodadas de investimento recentes de startups brasileiras via Crunchbase API. "
+                "Requer CRUNCHBASE_API_KEY configurada. Retorna mensagem clara se a key não estiver presente. "
+                "Cacheia resultados em DuckDB para consultas futuras."
+            ),
+            inputSchema=_LIST_RECENT_ROUNDS_SCHEMA,
+        ),
+        types.Tool(
+            name="get_investor_portfolio",
+            description=(
+                "Retorna portfólio de investimentos de um fundo/investidor pelo nome "
+                "via dados Crunchbase cacheados. Requer CRUNCHBASE_API_KEY configurada. "
+                "Use list_recent_rounds primeiro para popular o cache."
+            ),
+            inputSchema=_GET_INVESTOR_PORTFOLIO_SCHEMA,
+        ),
+        types.Tool(
+            name="enrich_startup_with_crunchbase",
+            description=(
+                "Enriquece dados de uma startup com informações Crunchbase "
+                "(total_funding_usd, last_funding_type, categorias, website, etc.) "
+                "dado o slug/permalink Crunchbase da empresa. "
+                "Requer CRUNCHBASE_API_KEY configurada."
+            ),
+            inputSchema=_ENRICH_STARTUP_SCHEMA,
         ),
     ]
 
@@ -174,6 +259,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             result = get_startup_by_cnpj(
                 cnpj=arguments["cnpj"],
                 include_founders=bool(arguments.get("include_founders", True)),
+                include_rounds=bool(arguments.get("include_rounds", False)),
             )
         elif name == "search_startups":
             from br_startup_mcp.tools.startup import search_startups
@@ -183,6 +269,25 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
                 estado=arguments.get("estado"),
                 data_abertura_min=arguments.get("data_abertura_min"),
                 limit=int(arguments.get("limit", 20)),
+            )
+        elif name == "list_recent_rounds":
+            from br_startup_mcp.tools.crunchbase import list_recent_rounds
+            result = list_recent_rounds(
+                limit=int(arguments.get("limit", 20)),
+                category=arguments.get("category"),
+                funding_stage=arguments.get("funding_stage"),
+            )
+        elif name == "get_investor_portfolio":
+            from br_startup_mcp.tools.crunchbase import get_investor_portfolio
+            result = get_investor_portfolio(
+                investor_name=arguments["investor_name"],
+                limit=int(arguments.get("limit", 20)),
+            )
+        elif name == "enrich_startup_with_crunchbase":
+            from br_startup_mcp.tools.startup import enrich_startup_with_crunchbase
+            result = enrich_startup_with_crunchbase(
+                cnpj=arguments["cnpj"],
+                crunchbase_slug=arguments["crunchbase_slug"],
             )
         else:
             result = json.dumps({"error": f"Unknown tool: {name}"})
