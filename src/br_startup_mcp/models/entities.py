@@ -1,7 +1,7 @@
 """Pydantic v2 models for br-startup-mcp entities."""
 
 import hashlib
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -44,3 +44,39 @@ class CvmOffer(BaseModel):
     data_encerramento: Optional[date] = None
     status: str
     tipo_valor_mobiliario: Optional[str] = None
+
+
+class Startup(BaseModel):
+    """Dados cadastrais de startup da Receita Federal (via BrasilAPI)."""
+
+    model_config = {"from_attributes": True}
+
+    cnpj: str
+    razao_social: str
+    nome_fantasia: Optional[str] = None
+    situacao_cadastral: str
+    data_abertura: date
+    capital_social_brl: float
+    cnae_principal: str
+    cnaes_secundarios: list[str] = []
+    natureza_juridica: str
+    porte: str
+    endereco_logradouro: Optional[str] = None
+    cidade: str
+    estado: str
+    cep: Optional[str] = None
+    updated_at: datetime
+
+
+class Founder(BaseModel):
+    """Sócio/fundador derivado do quadro societário da Receita Federal."""
+
+    model_config = {"from_attributes": True}
+
+    id: str
+    cnpj_empresa: str
+    nome: str
+    cpf_cnpj: Optional[str] = None
+    qualificacao: str
+    participacao_pct: Optional[float] = None
+    data_entrada: Optional[date] = None

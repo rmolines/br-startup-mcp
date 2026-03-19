@@ -61,6 +61,50 @@ _BNDES_SCHEMA = {
     "required": [],
 }
 
+_GET_STARTUP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "cnpj": {
+            "type": "string",
+            "description": "CNPJ da empresa (com ou sem formatação)",
+        },
+        "include_founders": {
+            "type": "boolean",
+            "description": "Incluir quadro societário (default: true)",
+            "default": True,
+        },
+    },
+    "required": ["cnpj"],
+}
+
+_SEARCH_STARTUPS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "cnae": {
+            "type": "string",
+            "description": "Código CNAE (parcial, busca por prefixo)",
+        },
+        "cidade": {
+            "type": "string",
+            "description": "Nome da cidade",
+        },
+        "estado": {
+            "type": "string",
+            "description": "UF (dois caracteres, ex: SP)",
+        },
+        "data_abertura_min": {
+            "type": "string",
+            "description": "Data mínima de abertura ISO 8601 (ex: 2020-01-01)",
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Máximo de resultados (default 20)",
+            "default": 20,
+        },
+    },
+    "required": [],
+}
+
 
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
@@ -85,6 +129,23 @@ async def list_tools() -> list[types.Tool]:
             ),
             inputSchema=_BNDES_SCHEMA,
         ),
+        types.Tool(
+            name="get_startup_by_cnpj",
+            description=(
+                "Busca dados cadastrais e quadro societário de uma startup pelo CNPJ "
+                "via Receita Federal (BrasilAPI). Retorna razão social, CNAE, cidade, "
+                "estado, capital social, situação cadastral e sócios."
+            ),
+            inputSchema=_GET_STARTUP_SCHEMA,
+        ),
+        types.Tool(
+            name="search_startups",
+            description=(
+                "Busca startups no cache local por CNAE, cidade, estado ou data de abertura. "
+                "Requer que CNPJs tenham sido previamente consultados via get_startup_by_cnpj."
+            ),
+            inputSchema=_SEARCH_STARTUPS_SCHEMA,
+        ),
     ]
 
 
@@ -106,6 +167,21 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             result = get_bndes_financing(
                 cnpj=arguments.get("cnpj"),
                 produto=arguments.get("produto"),
+                limit=int(arguments.get("limit", 20)),
+            )
+        elif name == "get_startup_by_cnpj":
+            from br_startup_mcp.tools.startup import get_startup_by_cnpj
+            result = get_startup_by_cnpj(
+                cnpj=arguments["cnpj"],
+                include_founders=bool(arguments.get("include_founders", True)),
+            )
+        elif name == "search_startups":
+            from br_startup_mcp.tools.startup import search_startups
+            result = search_startups(
+                cnae=arguments.get("cnae"),
+                cidade=arguments.get("cidade"),
+                estado=arguments.get("estado"),
+                data_abertura_min=arguments.get("data_abertura_min"),
                 limit=int(arguments.get("limit", 20)),
             )
         else:

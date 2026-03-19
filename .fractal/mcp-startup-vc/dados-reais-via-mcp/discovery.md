@@ -1,8 +1,8 @@
 ---
 response: new_child
 confidence: high
-reasoning: "Zero APIs/fontes foram testadas. CVM e BNDES oferecem CSVs via CKAN sem autenticação — caminho de menor resistência para validar o pipeline. Se o agente não consegue buscar e normalizar dados de sequer uma fonte aberta, o pipeline inteiro não fica de pé."
-child_predicate: "O agente não consegue buscar e normalizar dados reais de uma fonte governamental aberta (CVM ou BNDES) — validar que o pipeline fetch-normalize-cache funciona"
+reasoning: "Receita Federal/CNPJ é a âncora do data model — toda startup tem CNPJ. Base qualitativamente diferente: ~10 GB em múltiplos ZIPs, tabelas relacionais (empresas, estabelecimentos, sócios). O agente precisa decidir estratégia de acesso (bulk download vs API gov.br vs BigQuery) e implementar. Se falhar, o MCP perde a âncora central."
+child_predicate: "O agente não consegue integrar a base CNPJ da Receita Federal como fonte âncora — escolher estratégia de acesso e implementar pipeline para dados cadastrais/societários"
 child_type: risk
 prd_seed:
 leaf_type:
