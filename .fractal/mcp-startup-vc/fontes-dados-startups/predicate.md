@@ -1,5 +1,5 @@
 ---
 predicate: "O agente não consegue identificar fontes de dados acessíveis e suficientemente abrangentes sobre startups brasileiras para alimentar o MCP"
-status: pending
+status: satisfied
 created: 2026-03-19
 ---
